@@ -1,7 +1,7 @@
 [project]
-name = "repl-nix-workspace"
+name = "virtual-env"
 version = "0.1.0"
-description = "Add your description here"
+description = "virtual env of the game Estrela do Saber"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.116.2",
