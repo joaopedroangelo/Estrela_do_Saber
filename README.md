@@ -14,9 +14,9 @@
 ---
 ## Backend
 
-> Confira o backend em: [backend](backend/)
+> Confira o backend em: [backend](backend/README.md)
 
 ---
 # Frontend
 
-> Confira o frontend em: [frontend](frontend/)
+> Confira o frontend em: [frontend](frontend/README.md)
