@@ -80,6 +80,9 @@ class ChildFeedbackAgent:
             f.write(audio_response.read())
         print(f"Audio successfully generated in '{output_file}'")
 
+    def generate_audio(self, text: str, output_file: str) -> None:
+        """Método público para gerar áudio a partir de texto"""
+        self._generate_audio(text, output_file)
 
     def generate_feedback(
         self,

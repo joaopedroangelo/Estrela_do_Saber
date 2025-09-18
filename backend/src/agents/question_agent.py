@@ -23,7 +23,7 @@ class QuestionGeneratorAgent:
             api_key=api_key
         )
         self.parser = JsonOutputParser()
-        self._question_counter = 1
+        self._question_counter = 100
     
     def generate_question(self, ano: int) -> Dict[str, Any]:
         """
@@ -40,7 +40,7 @@ class QuestionGeneratorAgent:
         if ano <= 2:
             focus = "reconhecimento de letras, sílabas simples, palavras básicas do cotidiano"
             complexity = "muito simples, com palavras de 2-4 letras"
-        elif ano <= 3:
+        elif ano <= 4:
             focus = "formação de palavras, rimas, separação silábica, interpretação de frases curtas"
             complexity = "simples, com palavras familiares de até 6 letras"
         else:
@@ -96,8 +96,9 @@ class QuestionGeneratorAgent:
             
             self._question_counter += 1
             
-            print(f"✅ Questão gerada: ID {formatted_question['id']}")
-            print(f"📝 Pergunta: {formatted_question['question'][:50]}...")
+            print("✅ Questão gerada completa:")
+            print(json.dumps(formatted_question, indent=2, ensure_ascii=False))
+            print("Gerando áudio...")
             
             return formatted_question
             

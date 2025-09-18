@@ -1,4 +1,5 @@
 from datetime import datetime
+import random
 from typing import Optional, Dict, Any
 from sqlmodel import SQLModel, Field, create_engine, Session, JSON, Column
 from sqlalchemy import create_engine as sqlalchemy_create_engine
@@ -13,12 +14,17 @@ class Child(SQLModel, table=True):
 
 class Question(SQLModel, table=True):
     """Modelo para armazenar questões (opcional - pode ser gerada on-the-fly)"""
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int = Field(
+            default_factory=lambda: random.randint(100, 999999),
+            primary_key=True
+        )    
     question: str
     options: Dict[str, Any] = Field(sa_column=Column(JSON))  # Lista de opções em JSON
     answer: str  # Gabarito correto
     ano_ideal: int  # Ano escolar ideal para esta questão
+    audio_path: Optional[str] = Field(default="Sem áudio")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class Response(SQLModel, table=True):
     """Modelo para armazenar respostas das crianças - fonte única de verdade para relatórios"""
