@@ -16,13 +16,27 @@ Sistema modular composto por agentes especializados que:
 ## Arquitetura
 
 ```mermaid
-flowchart TD
-    O[Orchestrator] --> Q[Question Agent]
-    O --> R[Report Agent]
-    O --> T[TTS Audio Agent]
-    Q --> DB[(Database)]
-    R --> DB
-    T --> DB
+flowchart LR
+    %% Componentes
+    FE[Frontend]
+    O[Orchestrator]
+    DB[(Database)]
+
+    %% Subgraph para os agentes abaixo do Orchestrator
+    subgraph Agents
+        direction TB
+        Q[Question Agent]
+        R[Report Agent]
+        T[TTS Audio Agent]
+    end
+
+    %% Fluxo bidirecional
+    FE <--> O
+    O <--> Q
+    O <--> R
+    O <--> T
+    O --> DB
+
 ```
 
 ---
