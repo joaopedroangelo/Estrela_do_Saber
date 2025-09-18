@@ -1,0 +1,27 @@
+name: EscreveAI
+description: EscreveAI
+version: 0.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+  flutter: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flame: 1.32.0
+  audioplayers: 6.5.1 
+  shared_preferences: 2.5.3 
+  flame_audio: 2.11.10 
+
+flutter:
+  assets:
+    - assets/images/
+    - assets/voices/welcomes/welcome01.mp3
+    - assets/voices/welcomes/welcome02.mp3
+    - assets/questions/questions.json
+    - assets/voices/questions_voices/
+    - assets/audio/dora_voices/presentations/
+    - assets/audio/dora_voices/feedbacks_correct/
+    - assets/audio/dora_voices/feedbacks_error/

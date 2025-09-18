@@ -1,0 +1,927 @@
+observe esse jogo:
+
+
+
+import 'package:flame/components.dart';
+import 'package:flame/events.dart';
+import 'package:flame/game.dart';
+import 'package:flame/input.dart';
+import 'package:flutter/material.dart';
+
+import 'actors/ember.dart';
+import 'actors/water_enemy.dart';
+import 'managers/segment_manager.dart';
+import 'objects/ground_block.dart';
+import 'objects/platform_block.dart';
+import 'objects/star.dart';
+import 'overlays/hud.dart';
+
+class EmberQuestGame extends FlameGame
+    with HasCollisionDetection, HasKeyboardHandlerComponents {
+  EmberQuestGame();
+
+  late EmberPlayer _ember;
+  late double lastBlockXPosition = 0.0;
+  late UniqueKey lastBlockKey;
+
+  int starsCollected = 0;
+  int health = 3;
+  double cloudSpeed = 0.0;
+  double objectSpeed = 0.0;
+
+  // Adicionando joystick
+  late JoystickComponent joystick;
+
+  @override
+  Future<void> onLoad() async {
+    //debugMode = true; // Uncomment to see the bounding boxes
+    await images.loadAll([
+      'block.png',
+      'lapis.png',
+      'ember.png',
+      'borracha.png',
+      'ground.png',
+      'heart_half.png',
+      'heart.png',
+      'star.png',
+      'water_enemy.png',
+    ]);
+    camera.viewfinder.anchor = Anchor.topLeft;
+
+    // Inicializa joystick
+    joystick = JoystickComponent(
+      knob: CircleComponent(
+        radius: 20,
+        paint: Paint()..color = Colors.blueAccent,
+      ),
+      background: CircleComponent(
+        radius: 50,
+        paint: Paint()..color = Colors.blue.withOpacity(0.5),
+      ),
+      margin: EdgeInsets.only(
+        right: 60, // distância da borda direita
+        bottom:
+            canvasSize.y / 2 - 60, // sobe para aproximadamente metade da tela
+      ),
+    );
+    add(joystick);
+
+    initializeGame(loadHud: true);
+  }
+
+  @override
+  void update(double dt) {
+    if (health <= 0) {
+      overlays.add('GameOver');
+    }
+
+    // Atualiza movimento do EmberPlayer usando joystick
+    _ember.move(joystick.relativeDelta);
+
+    super.update(dt);
+  }
+
+  @override
+  Color backgroundColor() {
+    return const Color.fromARGB(255, 173, 223, 247);
+  }
+
+  void loadGameSegments(int segmentIndex, double xPositionOffset) {
+    for (final block in segments[segmentIndex]) {
+      final component = switch (block.blockType) {
+        const (GroundBlock) => GroundBlock(
+            gridPosition: block.gridPosition,
+            xOffset: xPositionOffset,
+          ),
+        const (PlatformBlock) => PlatformBlock(
+            gridPosition: block.gridPosition,
+            xOffset: xPositionOffset,
+          ),
+        const (Star) => Star(
+            gridPosition: block.gridPosition,
+            xOffset: xPositionOffset,
+          ),
+        const (WaterEnemy) => WaterEnemy(
+            gridPosition: block.gridPosition,
+            xOffset: xPositionOffset,
+          ),
+        _ => throw UnimplementedError(),
+      };
+      world.add(component);
+    }
+  }
+
+  void initializeGame({required bool loadHud}) {
+    final segmentsToLoad = (size.x / 640).ceil();
+    segmentsToLoad.clamp(0, segments.length);
+
+    for (var i = 0; i <= segmentsToLoad; i++) {
+      loadGameSegments(i, (640 * i).toDouble());
+    }
+
+    _ember = EmberPlayer(
+      position: Vector2(128, canvasSize.y - 128),
+    );
+    world.add(_ember);
+    if (loadHud) {
+      camera.viewport.add(Hud());
+    }
+  }
+
+  void reset() {
+    starsCollected = 0;
+    health = 3;
+    initializeGame(loadHud: false);
+  }
+}
+
+
+
+--------------------------------------------------------------------------
+
+
+import 'package:flame/collisions.dart';
+import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
+import 'package:flutter/services.dart';
+
+import '../ember_quest.dart';
+import '../objects/ground_block.dart';
+import '../objects/platform_block.dart';
+import '../objects/star.dart';
+import 'water_enemy.dart';
+
+class EmberPlayer extends SpriteComponent
+    with KeyboardHandler, CollisionCallbacks, HasGameReference<EmberQuestGame> {
+  EmberPlayer({
+    required super.position,
+  }) : super(size: Vector2.all(64), anchor: Anchor.center);
+
+  final Vector2 velocity = Vector2.zero();
+  final Vector2 fromAbove = Vector2(0, -1);
+  final double gravity = 15;
+  final double jumpSpeed = 600;
+  final double moveSpeed = 200;
+  final double terminalVelocity = 150;
+  int horizontalDirection = 0;
+
+  bool hasJumped = false;
+  bool isOnGround = false;
+  bool hitByEnemy = false;
+
+  @override
+  Future<void> onLoad() async {
+    sprite = await game.loadSprite('lapis.png'); // imagem estática do lápis
+
+    add(
+      CircleHitbox(),
+    );
+  }
+
+  @override
+  bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
+    horizontalDirection = 0;
+    horizontalDirection += (keysPressed.contains(LogicalKeyboardKey.keyA) ||
+            keysPressed.contains(LogicalKeyboardKey.arrowLeft))
+        ? -1
+        : 0;
+    horizontalDirection += (keysPressed.contains(LogicalKeyboardKey.keyD) ||
+            keysPressed.contains(LogicalKeyboardKey.arrowRight))
+        ? 1
+        : 0;
+
+    hasJumped = keysPressed.contains(LogicalKeyboardKey.space);
+    return true;
+  }
+
+  @override
+  void update(double dt) {
+    velocity.x = horizontalDirection * moveSpeed;
+    game.objectSpeed = 0;
+
+    if (position.x - 36 <= 0 && horizontalDirection < 0) {
+      velocity.x = 0;
+    }
+
+    if (position.x + 64 >= game.size.x / 2 && horizontalDirection > 0) {
+      velocity.x = 0;
+      game.objectSpeed = -moveSpeed;
+    }
+
+    velocity.y += gravity;
+
+    if (hasJumped) {
+      if (isOnGround) {
+        velocity.y = -jumpSpeed;
+        isOnGround = false;
+      }
+      hasJumped = false;
+    }
+
+    velocity.y = velocity.y.clamp(-jumpSpeed, terminalVelocity);
+    position += velocity * dt;
+
+    if (position.y > game.size.y + size.y) {
+      game.health = 0;
+    }
+
+    if (game.health <= 0) {
+      removeFromParent();
+    }
+
+    if (horizontalDirection < 0 && scale.x > 0) {
+      flipHorizontally();
+    } else if (horizontalDirection > 0 && scale.x < 0) {
+      flipHorizontally();
+    }
+
+    super.update(dt);
+  }
+
+  @override
+  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
+    if (other is GroundBlock || other is PlatformBlock) {
+      if (intersectionPoints.length == 2) {
+        final mid = (intersectionPoints.elementAt(0) +
+                intersectionPoints.elementAt(1)) /
+            2;
+
+        final collisionNormal = absoluteCenter - mid;
+        final separationDistance = (size.x / 2) - collisionNormal.length;
+        collisionNormal.normalize();
+
+        if (fromAbove.dot(collisionNormal) > 0.9) {
+          isOnGround = true;
+        }
+
+        position += collisionNormal.scaled(separationDistance);
+      }
+    }
+
+    if (other is Star) {
+      other.removeFromParent();
+      game.starsCollected++;
+    }
+
+    if (other is WaterEnemy) {
+      hit();
+    }
+    super.onCollision(intersectionPoints, other);
+  }
+
+  void hit() {
+    if (!hitByEnemy) {
+      game.health--;
+      hitByEnemy = true;
+    }
+    add(
+      OpacityEffect.fadeOut(
+        EffectController(
+          alternate: true,
+          duration: 0.1,
+          repeatCount: 5,
+        ),
+      )..onComplete = () {
+          hitByEnemy = false;
+        },
+    );
+  }
+
+  /// --- MÉTODO PARA JOYSTICK ---
+  void move(Vector2 delta) {
+    horizontalDirection = delta.x.sign.toInt();
+
+    if (delta.y < -0.5 && isOnGround) {
+      hasJumped = true;
+    }
+  }
+}
+
+
+----------------------------------------------------------------------
+
+
+import 'package:flame/collisions.dart';
+import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
+
+import '../ember_quest.dart';
+
+class WaterEnemy extends SpriteComponent with HasGameReference<EmberQuestGame> {
+  final Vector2 gridPosition;
+  double xOffset;
+
+  final Vector2 velocity = Vector2.zero();
+
+  WaterEnemy({
+    required this.gridPosition,
+    required this.xOffset,
+  }) : super(size: Vector2.all(64), anchor: Anchor.bottomLeft);
+
+  @override
+  Future<void> onLoad() async {
+    sprite = await game.loadSprite('borracha.png'); // imagem estática do lápis
+    position = Vector2(
+      (gridPosition.x * size.x) + xOffset,
+      game.size.y - (gridPosition.y * size.y),
+    );
+    add(RectangleHitbox(collisionType: CollisionType.passive));
+    add(
+      MoveEffect.by(
+        Vector2(-2 * size.x, 0),
+        EffectController(
+          duration: 3,
+          alternate: true,
+          infinite: true,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void update(double dt) {
+    velocity.x = game.objectSpeed;
+    position += velocity * dt;
+    if (position.x < -size.x || game.health <= 0) {
+      removeFromParent();
+    }
+    super.update(dt);
+  }
+}
+
+
+---------------------------------------------------------------------------------------------------------
+
+
+import 'package:flame/components.dart';
+
+import '../actors/water_enemy.dart';
+import '../objects/ground_block.dart';
+import '../objects/platform_block.dart';
+import '../objects/star.dart';
+
+class Block {
+  // gridPosition position is always segment based X,Y.
+  // 0,0 is the bottom left corner.
+  // 10,10 is the upper right corner.
+  final Vector2 gridPosition;
+  final Type blockType;
+  Block(this.gridPosition, this.blockType);
+}
+
+final segments = [
+  segment0,
+  segment1,
+  segment2,
+  segment3,
+  segment4,
+];
+
+final segment0 = [
+  Block(Vector2(0, 0), GroundBlock),
+  Block(Vector2(1, 0), GroundBlock),
+  Block(Vector2(2, 0), GroundBlock),
+  Block(Vector2(3, 0), GroundBlock),
+  Block(Vector2(4, 0), GroundBlock),
+  Block(Vector2(5, 0), GroundBlock),
+  Block(Vector2(5, 1), WaterEnemy),
+  Block(Vector2(5, 3), PlatformBlock),
+  Block(Vector2(6, 0), GroundBlock),
+  Block(Vector2(6, 3), PlatformBlock),
+  Block(Vector2(7, 0), GroundBlock),
+  Block(Vector2(7, 3), PlatformBlock),
+  Block(Vector2(8, 0), GroundBlock),
+  Block(Vector2(8, 3), PlatformBlock),
+  Block(Vector2(9, 0), GroundBlock),
+];
+
+final segment1 = [
+  Block(Vector2(0, 0), GroundBlock),
+  Block(Vector2(1, 0), GroundBlock),
+  Block(Vector2(1, 1), PlatformBlock),
+  Block(Vector2(1, 2), PlatformBlock),
+  Block(Vector2(1, 3), PlatformBlock),
+  Block(Vector2(2, 6), PlatformBlock),
+  Block(Vector2(3, 6), PlatformBlock),
+  Block(Vector2(6, 5), PlatformBlock),
+  Block(Vector2(7, 5), PlatformBlock),
+  Block(Vector2(7, 7), Star),
+  Block(Vector2(8, 0), GroundBlock),
+  Block(Vector2(8, 1), PlatformBlock),
+  Block(Vector2(8, 5), PlatformBlock),
+  Block(Vector2(8, 6), WaterEnemy),
+  Block(Vector2(9, 0), GroundBlock),
+];
+
+final segment2 = [
+  Block(Vector2(0, 0), GroundBlock),
+  Block(Vector2(1, 0), GroundBlock),
+  Block(Vector2(2, 0), GroundBlock),
+  Block(Vector2(3, 0), GroundBlock),
+  Block(Vector2(3, 3), PlatformBlock),
+  Block(Vector2(4, 0), GroundBlock),
+  Block(Vector2(4, 3), PlatformBlock),
+  Block(Vector2(5, 0), GroundBlock),
+  Block(Vector2(5, 3), PlatformBlock),
+  Block(Vector2(5, 4), WaterEnemy),
+  Block(Vector2(6, 0), GroundBlock),
+  Block(Vector2(6, 3), PlatformBlock),
+  Block(Vector2(6, 4), PlatformBlock),
+  Block(Vector2(6, 5), PlatformBlock),
+  Block(Vector2(6, 7), Star),
+  Block(Vector2(7, 0), GroundBlock),
+  Block(Vector2(8, 0), GroundBlock),
+  Block(Vector2(9, 0), GroundBlock),
+];
+
+final segment3 = [
+  Block(Vector2(0, 0), GroundBlock),
+  Block(Vector2(1, 0), GroundBlock),
+  Block(Vector2(1, 1), WaterEnemy),
+  Block(Vector2(2, 0), GroundBlock),
+  Block(Vector2(2, 1), PlatformBlock),
+  Block(Vector2(2, 2), PlatformBlock),
+  Block(Vector2(4, 4), PlatformBlock),
+  Block(Vector2(6, 6), PlatformBlock),
+  Block(Vector2(7, 0), GroundBlock),
+  Block(Vector2(7, 1), PlatformBlock),
+  Block(Vector2(8, 0), GroundBlock),
+  Block(Vector2(8, 8), Star),
+  Block(Vector2(9, 0), GroundBlock),
+];
+
+final segment4 = [
+  Block(Vector2(0, 0), GroundBlock),
+  Block(Vector2(1, 0), GroundBlock),
+  Block(Vector2(2, 0), GroundBlock),
+  Block(Vector2(2, 3), PlatformBlock),
+  Block(Vector2(3, 0), GroundBlock),
+  Block(Vector2(3, 1), WaterEnemy),
+  Block(Vector2(3, 3), PlatformBlock),
+  Block(Vector2(4, 0), GroundBlock),
+  Block(Vector2(5, 0), GroundBlock),
+  Block(Vector2(5, 5), PlatformBlock),
+  Block(Vector2(6, 0), GroundBlock),
+  Block(Vector2(6, 5), PlatformBlock),
+  Block(Vector2(6, 7), Star),
+  Block(Vector2(7, 0), GroundBlock),
+  Block(Vector2(8, 0), GroundBlock),
+  Block(Vector2(8, 3), PlatformBlock),
+  Block(Vector2(9, 0), GroundBlock),
+  Block(Vector2(9, 1), WaterEnemy),
+  Block(Vector2(9, 3), PlatformBlock),
+];
+
+
+--------------------------------------------------------------------------------------------
+
+
+import 'dart:math';
+
+import 'package:flame/collisions.dart';
+import 'package:flame/components.dart';
+import 'package:flutter/material.dart';
+
+import '../ember_quest.dart';
+import '../managers/segment_manager.dart';
+
+class GroundBlock extends SpriteComponent
+    with HasGameReference<EmberQuestGame> {
+  final Vector2 gridPosition;
+  double xOffset;
+
+  final UniqueKey _blockKey = UniqueKey();
+  final Vector2 velocity = Vector2.zero();
+
+  GroundBlock({
+    required this.gridPosition,
+    required this.xOffset,
+  }) : super(size: Vector2.all(64), anchor: Anchor.bottomLeft);
+
+  @override
+  Future<void> onLoad() async {
+    final groundImage = game.images.fromCache('ground.png');
+    sprite = Sprite(groundImage);
+    position = Vector2(
+      (gridPosition.x * size.x) + xOffset,
+      game.size.y - (gridPosition.y * size.y),
+    );
+    add(RectangleHitbox(collisionType: CollisionType.passive));
+    if (gridPosition.x == 9 && position.x > game.lastBlockXPosition) {
+      game.lastBlockKey = _blockKey;
+      game.lastBlockXPosition = position.x + size.x;
+    }
+  }
+
+  @override
+  void update(double dt) {
+    velocity.x = game.objectSpeed;
+    position += velocity * dt;
+
+    if (position.x < -size.x) {
+      removeFromParent();
+      if (gridPosition.x == 0) {
+        game.loadGameSegments(
+          Random().nextInt(segments.length),
+          game.lastBlockXPosition,
+        );
+      }
+    }
+    if (gridPosition.x == 9) {
+      if (game.lastBlockKey == _blockKey) {
+        game.lastBlockXPosition = position.x + size.x - 10;
+      }
+    }
+    if (game.health <= 0) {
+      removeFromParent();
+    }
+
+    super.update(dt);
+  }
+}
+
+
+------------------------------------------------------------------------------------------------------
+
+
+import 'package:flame/collisions.dart';
+import 'package:flame/components.dart';
+
+import '../ember_quest.dart';
+
+class PlatformBlock extends SpriteComponent
+    with HasGameReference<EmberQuestGame> {
+  final Vector2 gridPosition;
+  double xOffset;
+
+  final Vector2 velocity = Vector2.zero();
+
+  PlatformBlock({
+    required this.gridPosition,
+    required this.xOffset,
+  }) : super(size: Vector2.all(64), anchor: Anchor.bottomLeft);
+
+  @override
+  Future<void> onLoad() async {
+    final platformImage = game.images.fromCache('block.png');
+    sprite = Sprite(platformImage);
+    position = Vector2(
+      (gridPosition.x * size.x) + xOffset,
+      game.size.y - (gridPosition.y * size.y),
+    );
+    add(RectangleHitbox(collisionType: CollisionType.passive));
+  }
+
+  @override
+  void update(double dt) {
+    velocity.x = game.objectSpeed;
+    position += velocity * dt;
+    if (position.x < -size.x || game.health <= 0) {
+      removeFromParent();
+    }
+    super.update(dt);
+  }
+}
+
+
+------------------------------------------------------------------------------------------
+
+
+import 'package:flame/collisions.dart';
+import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
+import 'package:flutter/material.dart';
+
+import '../ember_quest.dart';
+
+class Star extends SpriteComponent with HasGameReference<EmberQuestGame> {
+  final Vector2 gridPosition;
+  double xOffset;
+
+  final Vector2 velocity = Vector2.zero();
+
+  Star({
+    required this.gridPosition,
+    required this.xOffset,
+  }) : super(size: Vector2.all(64), anchor: Anchor.center);
+
+  @override
+  Future<void> onLoad() async {
+    final starImage = game.images.fromCache('star.png');
+    sprite = Sprite(starImage);
+    position = Vector2(
+      (gridPosition.x * size.x) + xOffset + (size.x / 2),
+      game.size.y - (gridPosition.y * size.y) - (size.y / 2),
+    );
+    add(RectangleHitbox(collisionType: CollisionType.passive));
+    add(
+      SizeEffect.by(
+        Vector2.all(-24),
+        EffectController(
+          duration: 0.75,
+          reverseDuration: 0.5,
+          infinite: true,
+          curve: Curves.easeOut,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void update(double dt) {
+    velocity.x = game.objectSpeed;
+    position += velocity * dt;
+    if (position.x < -size.x || game.health <= 0) {
+      removeFromParent();
+    }
+    super.update(dt);
+  }
+}
+
+------------------------------------------------------------------------------------------
+
+
+import 'package:flutter/material.dart';
+
+import '../ember_quest.dart';
+
+class GameOver extends StatelessWidget {
+  // Reference to parent game.
+  final EmberQuestGame game;
+  const GameOver({required this.game, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const blackTextColor = Color.fromRGBO(0, 0, 0, 1.0);
+    const whiteTextColor = Color.fromRGBO(255, 255, 255, 1.0);
+
+    return Material(
+      color: Colors.transparent,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(10.0),
+          height: 200,
+          width: 300,
+          decoration: const BoxDecoration(
+            color: blackTextColor,
+            borderRadius: BorderRadius.all(
+              Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Game Over',
+                style: TextStyle(
+                  color: whiteTextColor,
+                  fontSize: 24,
+                ),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: 200,
+                height: 75,
+                child: ElevatedButton(
+                  onPressed: () {
+                    game.reset();
+                    game.overlays.remove('GameOver');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: whiteTextColor,
+                  ),
+                  child: const Text(
+                    'Play Again',
+                    style: TextStyle(
+                      fontSize: 28.0,
+                      color: blackTextColor,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+-------------------------------------------------------------------------------------
+
+import 'package:flame/components.dart';
+
+import '../ember_quest.dart';
+
+enum HeartState {
+  available,
+  unavailable,
+}
+
+class HeartHealthComponent extends SpriteGroupComponent<HeartState>
+    with HasGameReference<EmberQuestGame> {
+  final int heartNumber;
+
+  HeartHealthComponent({
+    required this.heartNumber,
+    required super.position,
+    required super.size,
+    super.scale,
+    super.angle,
+    super.anchor,
+    super.priority,
+  });
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    final availableSprite = await game.loadSprite(
+      'heart.png',
+      srcSize: Vector2.all(32),
+    );
+
+    final unavailableSprite = await game.loadSprite(
+      'heart_half.png',
+      srcSize: Vector2.all(32),
+    );
+
+    sprites = {
+      HeartState.available: availableSprite,
+      HeartState.unavailable: unavailableSprite,
+    };
+
+    current = HeartState.available;
+  }
+
+  @override
+  void update(double dt) {
+    if (game.health < heartNumber) {
+      current = HeartState.unavailable;
+    } else {
+      current = HeartState.available;
+    }
+    super.update(dt);
+  }
+}
+
+--------------------------------------------------------------------
+
+import 'package:flame/components.dart';
+import 'package:flutter/material.dart';
+
+import '../ember_quest.dart';
+import 'heart.dart';
+
+class Hud extends PositionComponent with HasGameReference<EmberQuestGame> {
+  Hud({
+    super.position,
+    super.size,
+    super.scale,
+    super.angle,
+    super.anchor,
+    super.children,
+    super.priority = 5,
+  });
+
+  late TextComponent _scoreTextComponent;
+
+  @override
+  Future<void>? onLoad() async {
+    _scoreTextComponent = TextComponent(
+      text: '${game.starsCollected}',
+      textRenderer: TextPaint(
+        style: const TextStyle(
+          fontSize: 32,
+          color: Color.fromRGBO(10, 10, 10, 1),
+        ),
+      ),
+      anchor: Anchor.center,
+      position: Vector2(game.size.x - 60, 20),
+    );
+    add(_scoreTextComponent);
+
+    final starSprite = await game.loadSprite('star.png');
+    add(
+      SpriteComponent(
+        sprite: starSprite,
+        position: Vector2(game.size.x - 100, 20),
+        size: Vector2.all(32),
+        anchor: Anchor.center,
+      ),
+    );
+
+    for (var i = 1; i <= game.health; i++) {
+      final positionX = 40 * i;
+      await add(
+        HeartHealthComponent(
+          heartNumber: i,
+          position: Vector2(positionX.toDouble(), 20),
+          size: Vector2.all(32),
+        ),
+      );
+    }
+
+    return super.onLoad();
+  }
+
+  @override
+  void update(double dt) {
+    _scoreTextComponent.text = '${game.starsCollected}';
+    super.update(dt);
+  }
+}
+
+
+------------------------------------------------------------------
+
+import 'package:flutter/material.dart';
+
+import '../ember_quest.dart';
+
+class MainMenu extends StatelessWidget {
+  // Reference to parent game.
+  final EmberQuestGame game;
+
+  const MainMenu({required this.game, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const blackTextColor = Color.fromRGBO(0, 0, 0, 1.0);
+    const whiteTextColor = Color.fromRGBO(255, 255, 255, 1.0);
+
+    return Material(
+      color: Colors.transparent,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(10.0),
+          height: 300,
+          width: 300,
+          decoration: const BoxDecoration(
+            color: blackTextColor,
+            borderRadius: BorderRadius.all(
+              Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Ember Quest',
+                style: TextStyle(
+                  color: whiteTextColor,
+                  fontSize: 24,
+                ),
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: 200,
+                height: 75,
+                child: ElevatedButton(
+                  onPressed: () {
+                    game.overlays.remove('MainMenu');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: whiteTextColor,
+                  ),
+                  child: const Text(
+                    'Play',
+                    style: TextStyle(
+                      fontSize: 40.0,
+                      color: blackTextColor,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '''Use WASD or Arrow Keys for movement.
+Space bar to jump.
+Collect as many stars as you can and avoid enemies!''',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: whiteTextColor,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+Que mudanças eu posso fazer para tornar esse jogo educativo para alfabetização? Futuramente ele vai se conectar com um sistema backend que envia questões e feedbacks em áudios. Mas vamos focar só no frontend nesse momento.
+
+
+void move(Vector2 delta) {
+    horizontalDirection = delta.x.sign.toInt();
+
+    if (delta.y < -0.5 && isOnGround) {
+      hasJumped = true;
+    }
+  }

@@ -1,0 +1,662 @@
+[
+    {
+        "id": 3,
+        "disponivel": true,
+        "question": "Quantas patas tem um cachorro?",
+        "options": [
+            "2",
+            "4",
+            "6",
+            "8"
+        ],
+        "answer": "4"
+    },
+    {
+        "id": 1,
+        "disponivel": true,
+        "question": "Qual letra inicial da palavra 'Abacaxi'?",
+        "options": [
+            "A",
+            "B",
+            "C",
+            "D"
+        ],
+        "answer": "A"
+    },
+    {
+        "id": 2,
+        "disponivel": true,
+        "question": "Qual é a cor do céu em um dia claro?",
+        "options": [
+            "Azul",
+            "Verde",
+            "Amarelo",
+            "Vermelho"
+        ],
+        "answer": "Azul"
+    },
+    {
+        "id": 4,
+        "disponivel": true,
+        "question": "Qual letra inicial da palavra 'Banana'?",
+        "options": [
+            "B",
+            "M",
+            "P",
+            "T"
+        ],
+        "answer": "B"
+    },
+    {
+        "id": 5,
+        "disponivel": true,
+        "question": "Qual é a primeira letra da palavra 'Lâmpada'?",
+        "options": [
+            "L",
+            "R",
+            "S",
+            "T"
+        ],
+        "answer": "L"
+    },
+    {
+        "id": 6,
+        "disponivel": true,
+        "question": "Qual é a primeira vogal da palavra 'elefante'?",
+        "options": [
+            "A",
+            "E",
+            "I",
+            "O"
+        ],
+        "answer": "E"
+    },
+    {
+        "id": 7,
+        "disponivel": true,
+        "question": "Qual letra inicial da palavra 'Livro'?",
+        "options": [
+            "L",
+            "V",
+            "F",
+            "P"
+        ],
+        "answer": "L"
+    },
+    {
+        "id": 8,
+        "disponivel": true,
+        "question": "Quantas sílabas tem a palavra 'bola'?",
+        "options": [
+            "1",
+            "2",
+            "3",
+            "4"
+        ],
+        "answer": "2"
+    },
+    {
+        "id": 9,
+        "disponivel": true,
+        "question": "Qual é a letra final da palavra 'sol'?",
+        "options": [
+            "S",
+            "O",
+            "L",
+            "R"
+        ],
+        "answer": "L"
+    },
+    {
+        "id": 10,
+        "disponivel": true,
+        "question": "Qual palavra rima com 'pato'?",
+        "options": [
+            "Rato",
+            "Mesa",
+            "Sol",
+            "Luz"
+        ],
+        "answer": "Rato"
+    },
+    {
+        "id": 11,
+        "disponivel": true,
+        "question": "Qual letra falta em '_ão' para formar a palavra 'Pão'?",
+        "options": [
+            "B",
+            "P",
+            "M",
+            "R"
+        ],
+        "answer": "P"
+    },
+    {
+        "id": 12,
+        "disponivel": true,
+        "question": "Qual é a primeira vogal na palavra 'mesa'?",
+        "options": [
+            "E",
+            "A",
+            "I",
+            "O"
+        ],
+        "answer": "E"
+    },
+    {
+        "id": 13,
+        "disponivel": true,
+        "question": "Qual letra inicial da palavra 'Urso'?",
+        "options": [
+            "U",
+            "O",
+            "V",
+            "A"
+        ],
+        "answer": "U"
+    },
+    {
+        "id": 14,
+        "disponivel": true,
+        "question": "Qual palavra começa com o som k?",
+        "options": [
+            "Casa",
+            "Gato",
+            "Jogo",
+            "Rato"
+        ],
+        "answer": "Casa"
+    },
+    {
+        "id": 15,
+        "disponivel": true,
+        "question": "Qual dessas letras é uma vogal?",
+        "options": [
+            "A",
+            "B",
+            "C",
+            "D"
+        ],
+        "answer": "A"
+    },
+    {
+        "id": 16,
+        "disponivel": true,
+        "question": "Qual letra completa a palavra 'ca_a' para formar 'casa'?",
+        "options": [
+            "S",
+            "L",
+            "R",
+            "M"
+        ],
+        "answer": "S"
+    },
+    {
+        "id": 17,
+        "disponivel": true,
+        "question": "Quantas letras tem a palavra 'sol'?",
+        "options": [
+            "2",
+            "3",
+            "4",
+            "5"
+        ],
+        "answer": "3"
+    },
+    {
+        "id": 18,
+        "disponivel": true,
+        "question": "Qual palavra tem som inicial /f/?",
+        "options": [
+            "Faca",
+            "Vaca",
+            "Dado",
+            "Rato"
+        ],
+        "answer": "Faca"
+    },
+    {
+        "id": 19,
+        "disponivel": true,
+        "question": "Qual é a sílaba inicial da palavra 'banana'?",
+        "options": [
+            "ba",
+            "na",
+            "an",
+            "da"
+        ],
+        "answer": "ba"
+    },
+    {
+        "id": 20,
+        "disponivel": true,
+        "question": "Qual letra inicial da palavra 'Xícara'?",
+        "options": [
+            "X",
+            "Z",
+            "S",
+            "J"
+        ],
+        "answer": "X"
+    },
+    {
+        "id": 21,
+        "disponivel": true,
+        "question": "Qual é a forma correta da palavra que representa o animal felino doméstico?",
+        "options": [
+            "gato",
+            "gatoo",
+            "gatu",
+            "gatto"
+        ],
+        "answer": "gato"
+    },
+    {
+        "id": 22,
+        "disponivel": true,
+        "question": "Qual palavra representa um número?",
+        "options": [
+            "três",
+            "bola",
+            "azul",
+            "casa"
+        ],
+        "answer": "três"
+    },
+    {
+        "id": 23,
+        "disponivel": true,
+        "question": "Qual letra falta em 'u_a' para formar 'uva'?",
+        "options": [
+            "V",
+            "A",
+            "O",
+            "E"
+        ],
+        "answer": "V"
+    },
+    {
+        "id": 24,
+        "disponivel": true,
+        "question": "Escolha a palavra que rima com 'pão':",
+        "options": [
+            "mão",
+            "luz",
+            "caldo",
+            "pé"
+        ],
+        "answer": "mão"
+    },
+    {
+        "id": 25,
+        "disponivel": true,
+        "question": "Qual letra inicial da palavra 'Zebra'?",
+        "options": [
+            "Z",
+            "S",
+            "X",
+            "C"
+        ],
+        "answer": "Z"
+    },
+    {
+        "id": 26,
+        "disponivel": true,
+        "question": "Qual palavra rima com 'flor'?",
+        "options": [
+            "Amor",
+            "Casa",
+            "Mar",
+            "Sol"
+        ],
+        "answer": "Amor"
+    },
+    {
+        "id": 27,
+        "disponivel": true,
+        "question": "Quantas sílabas tem a palavra 'paralelepípedo'?",
+        "options": [
+            "6",
+            "7",
+            "8",
+            "9"
+        ],
+        "answer": "7"
+    },
+    {
+        "id": 28,
+        "disponivel": true,
+        "question": "Complete a palavra: Cade___",
+        "options": [
+            "ira",
+            "eira",
+            "era",
+            "ira"
+        ],
+        "answer": "ira"
+    },
+    {
+        "id": 29,
+        "disponivel": true,
+        "question": "Qual sílaba é tônica em 'máquina'?",
+        "options": [
+            "má",
+            "qui",
+            "na",
+            "qui"
+        ],
+        "answer": "má"
+    },
+    {
+        "id": 30,
+        "disponivel": true,
+        "question": "Qual palavra rima com 'noite'?",
+        "options": [
+            "Pernoite",
+            "Coite",
+            "Poite",
+            "Moite"
+        ],
+        "answer": "Pernoite"
+    },
+    {
+        "id": 31,
+        "disponivel": true,
+        "question": "Quantas sílabas tem a palavra 'inconstitucionalissimamente'?",
+        "options": [
+            "12",
+            "13",
+            "14",
+            "15"
+        ],
+        "answer": "14"
+    },
+    {
+        "id": 32,
+        "disponivel": true,
+        "question": "Complete: ___vação",
+        "options": [
+            "Obser",
+            "Con",
+            "Ado",
+            "Culta"
+        ],
+        "answer": "Obser"
+    },
+    {
+        "id": 33,
+        "disponivel": true,
+        "question": "Qual palavra é acentuada pela mesma regra de 'café'?",
+        "options": [
+            "Árvore",
+            "Casa",
+            "Até",
+            "Macedônia"
+        ],
+        "answer": "Até"
+    },
+    {
+        "id": 34,
+        "disponivel": true,
+        "question": "Qual palavra rima com 'estrela'?",
+        "options": [
+            "Coestrela",
+            "Donzela",
+            "Pão",
+            "Capim"
+        ],
+        "answer": "Coestrela"
+    },
+    {
+        "id": 35,
+        "disponivel": true,
+        "question": "Quantas sílabas tem a palavra 'fênix'?",
+        "options": [
+            "2",
+            "3",
+            "4",
+            "5"
+        ],
+        "answer": "2"
+    },
+    {
+        "id": 36,
+        "disponivel": true,
+        "question": "Complete: Transfor___",
+        "options": [
+            "mação",
+            "missão",
+            "ração",
+            "ção"
+        ],
+        "answer": "mação"
+    },
+    {
+        "id": 37,
+        "disponivel": true,
+        "question": "Qual sílaba é tônica em 'árvore'?",
+        "options": [
+            "ár",
+            "vo",
+            "re",
+            "nenhuma"
+        ],
+        "answer": "ár"
+    },
+    {
+        "id": 38,
+        "disponivel": true,
+        "question": "Qual palavra rima com 'pássaro'?",
+        "options": [
+            "Raro",
+            "Feijão",
+            "Arroz",
+            "Comum"
+        ],
+        "answer": "Raro"
+    },
+    {
+        "id": 39,
+        "disponivel": true,
+        "question": "Quantas sílabas tem a palavra 'hipopótamo'?",
+        "options": [
+            "5",
+            "6",
+            "7",
+            "8"
+        ],
+        "answer": "5"
+    },
+    {
+        "id": 40,
+        "disponivel": true,
+        "question": "Complete: ___ção",
+        "options": [
+            "Aten",
+            "Bez",
+            "Ama",
+            "Canta"
+        ],
+        "answer": "Aten"
+    },
+    {
+        "id": 41,
+        "disponivel": true,
+        "question": "Qual palavra é acentuada por ser proparoxítona?",
+        "options": [
+            "Lâmpada",
+            "Mesa",
+            "Cadeira",
+            "Sofá"
+        ],
+        "answer": "Lâmpada"
+    },
+    {
+        "id": 42,
+        "disponivel": true,
+        "question": "Qual palavra rima com 'caneta'?",
+        "options": [
+            "Vareta",
+            "Cameta",
+            "Fita",
+            "Reta"
+        ],
+        "answer": "Vareta"
+    },
+    {
+        "id": 43,
+        "disponivel": true,
+        "question": "Quantas sílabas tem a palavra 'aurora'?",
+        "options": [
+            "3",
+            "4",
+            "5",
+            "6"
+        ],
+        "answer": "3"
+    },
+    {
+        "id": 44,
+        "disponivel": true,
+        "question": "Complete: Ilu___",
+        "options": [
+            "minação",
+            "cão",
+            "tração",
+            "ção"
+        ],
+        "answer": "minação"
+    },
+    {
+        "id": 45,
+        "disponivel": true,
+        "question": "Qual sílaba é tônica em 'república'?",
+        "options": [
+            "re",
+            "pú",
+            "bli",
+            "ca"
+        ],
+        "answer": "pú"
+    },
+    {
+        "id": 46,
+        "disponivel": true,
+        "question": "Qual palavra rima com 'campo'?",
+        "options": [
+            "Pirilampo",
+            "Pescoço",
+            "Rosto",
+            "Gato"
+        ],
+        "answer": "Pirilampo"
+    },
+    {
+        "id": 47,
+        "disponivel": true,
+        "question": "Quantas sílabas tem a palavra 'eletricidade'?",
+        "options": [
+            "6",
+            "7",
+            "8",
+            "9"
+        ],
+        "answer": "6"
+    },
+    {
+        "id": 48,
+        "disponivel": true,
+        "question": "Complete: Satis___",
+        "options": [
+            "fação",
+            "ção",
+            "ração",
+            "ação"
+        ],
+        "answer": "fação"
+    },
+    {
+        "id": 49,
+        "disponivel": true,
+        "question": "Qual palavra é acentuada por ser oxítona terminada em 'a'?",
+        "options": [
+            "Sofá",
+            "Máquina",
+            "Árvore",
+            "Lâmpada"
+        ],
+        "answer": "Sofá"
+    },
+    {
+        "id": 50,
+        "disponivel": true,
+        "question": "Qual palavra rima com 'riso'?",
+        "options": [
+            "Piso",
+            "Caso",
+            "Casa",
+            "Peso"
+        ],
+        "answer": "Piso"
+    },
+    {
+        "id": 51,
+        "disponivel": true,
+        "question": "Quantas sílabas tem a palavra 'universo'?",
+        "options": [
+            "4",
+            "5",
+            "6",
+            "7"
+        ],
+        "answer": "4"
+    },
+    {
+        "id": 52,
+        "disponivel": true,
+        "question": "Complete: ___mação",
+        "options": [
+            "Infor",
+            "Confi",
+            "Afo",
+            "Refo"
+        ],
+        "answer": "Infor"
+    },
+    {
+        "id": 53,
+        "disponivel": true,
+        "question": "Qual sílaba é tônica em 'automóvel'?",
+        "options": [
+            "au",
+            "to",
+            "mó",
+            "vel"
+        ],
+        "answer": "mó"
+    },
+    {
+        "id": 54,
+        "disponivel": true,
+        "question": "Qual palavra rima com 'vento'?",
+        "options": [
+            "Lápis",
+            "Senta",
+            "Venta",
+            "Lento"
+        ],
+        "answer": "Lento"
+    },
+    {
+        "id": 55,
+        "disponivel": true,
+        "question": "Quantas sílabas tem a palavra 'idioma'?",
+        "options": [
+            "3",
+            "4",
+            "5",
+            "6"
+        ],
+        "answer": "4"
+    }
+]
