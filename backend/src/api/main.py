@@ -84,56 +84,51 @@ async def startup():
     logger.info("📚 Banco de dados SQLite configurado")
     logger.info("🤖 Agentes OpenAI prontos")
 
+from fastapi import BackgroundTasks
+
 @app.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_child(
     request: RegisterRequest,
     session: Session = Depends(get_session)
 ) -> Dict[str, Any]:
-    """
-    Registra ou atualiza uma criança no sistema
-    """
-    
     logger.info(f"Registrando criança: {request.nome}, {request.ano}º ano")
-            # Verificar se criança já exist
-            # Criar nova criança
+
     new_child = Child(
         nome=request.nome,
         ano=request.ano,
-            email_responsavel=request.email_responsavel
+        email_responsavel=request.email_responsavel
     )
     session.add(new_child)
     session.commit()
     session.refresh(new_child)
-    child_data = new_child
-    logger.info(f"Nova criança registrada: {request.nome}")
 
-    # Gerar áudio de boas-vindas apenas para novos registros
-    welcome_text = f"Olá {request.nome}! Seja muito bem-vinda ao jogo do saber, o melhoooor jogo do mundo! Vamos brincar com as letras?"
     audio_filename = f"{request.nome.lower().replace(' ', '_')}.mp3"
     audio_dir = os.path.join("audios", "welcomes")
     os.makedirs(audio_dir, exist_ok=True)
     audio_path = os.path.join(audio_dir, audio_filename)
-            
-    # Usar o TTS Agent para gerar áudio
+    new_child.audio_path = audio_path
+    session.commit()
+
+    welcome_text = f"Olá {request.nome}! Seja muito bem-vinda ao jogo do saber... O melhooooor jogo do muuundo!"
+
+    # Gerar o áudio aqui de forma BLOQUEANTE
     tts_agent = ChildFeedbackAgent()
     tts_agent.generate_audio(welcome_text, audio_path)
-            
-    # Atualizar caminho do áudio no banco
-    child_data.audio_path = audio_path
-    session.commit()
-    session.refresh(child_data)
-        
+    logger.info(f"Áudio gerado em {audio_path}")
+
+    # Agora sim retorna
     return {
-            "ok": True,
-            "child": {
-                "id": child_data.id,
-                "nome": child_data.nome,
-                "ano": child_data.ano,
-                "email_responsavel": child_data.email_responsavel,
-                "audio_path": child_data.audio_path,
-                "created_at": child_data.created_at.isoformat()
-            }
+        "ok": True,
+        "child": {
+            "id": new_child.id,
+            "nome": new_child.nome,
+            "ano": new_child.ano,
+            "email_responsavel": new_child.email_responsavel,
+            "audio_path": new_child.audio_path,
+            "created_at": new_child.created_at.isoformat()
         }
+    }
+
 
 
 from fastapi.responses import FileResponse
