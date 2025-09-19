@@ -129,7 +129,47 @@ async def register_child(
         }
     }
 
-
+@app.post("/nova_questao")
+async def new_question(
+    request: NewQuestionRequest,
+    session: Session = Depends(get_session)
+) -> Dict[str, Any]:
+    """
+    Gera nova questão usando o sistema multi-agente
+    
+    Body: {"ano": 2, "email_responsavel": "resp@exemplo.com"}
+    Returns: {"id": 1, "disponivel": true, "question": "...", "options": [...], "answer": "A"}
+    """
+    
+    logger.info(f"🎯 Nova questão solicitada: {request.ano}º ano, email: {request.email_responsavel}")
+    
+    try:
+        # Verificar se criança existe
+        child = session.exec(
+            select(Child).where(Child.email_responsavel == request.email_responsavel)
+        ).first()
+        
+        if not child:
+            raise HTTPException(
+                status_code=404, 
+                detail="Criança não encontrada. Faça o registro primeiro."
+            )
+        
+        # Processar via LangGraph
+        question_data = orchestrator.process_new_question(
+            ano=request.ano,
+            child_email=request.email_responsavel
+        )
+        
+        logger.info(f"✅ Questão gerada: ID {question_data['id']}")
+        
+        return question_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Erro ao gerar questão: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 from fastapi.responses import FileResponse
 import os

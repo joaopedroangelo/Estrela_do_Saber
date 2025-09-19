@@ -1,7 +1,7 @@
 // lib/overlays/main_menu.dart
 import 'package:flutter/material.dart';
-import 'package:flame_audio/flame_audio.dart';
 import 'package:http/http.dart' as http;
+import 'package:audioplayers/audioplayers.dart';
 
 import '../ember_quest.dart';
 import '../api/api.dart';
@@ -16,30 +16,75 @@ class MainMenu extends StatefulWidget {
 }
 
 class _MainMenuState extends State<MainMenu> {
+  // campos do usuário
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
+
+  // audio
   final AudioPlayer _audioPlayer = AudioPlayer();
 
+  // URLs pré-definidas
+  final List<String> _predefinedUrls = [
+    'http://192.168.48.41:5000',
+    'http://192.168.1.8:5000',
+    'http://192.168.166.89:5000'
+  ];
+
+  // estado para baseUrl (usado para montar URIs)
+  late String _selectedBaseUrl;
+  // valor exibido no Dropdown (pode ser uma das URLs pré ou 'Outro')
+  late String _dropdownValue;
+  // controller para edição manual da baseUrl
+  final TextEditingController _baseUrlController = TextEditingController();
+
+  // ApiService (re-criado quando a baseUrl muda)
+  late ApiService _api;
+
+  // demais estados
   String selectedGrade = '1º Ano';
   bool _loading = false;
-  final ApiService _api = ApiService(baseUrl: 'http://192.168.1.8:5000');
 
   @override
   void initState() {
     super.initState();
-    if (widget.game.playerName.isNotEmpty)
+
+    // popula campos a partir do game (se já existir)
+    if (widget.game.playerName.isNotEmpty) {
       nameController.text = widget.game.playerName;
-    if (widget.game.parentEmail.isNotEmpty)
+    }
+    if (widget.game.parentEmail.isNotEmpty) {
       emailController.text = widget.game.parentEmail;
-    if (widget.game.playerGrade.isNotEmpty)
+    }
+    if (widget.game.playerGrade.isNotEmpty) {
       selectedGrade = widget.game.playerGrade;
+    }
+
+    // inicializa baseUrl com a primeira pré-definida ou com o valor salvo no game (se você tiver)
+    _selectedBaseUrl = _predefinedUrls[0];
+    _baseUrlController.text = _selectedBaseUrl;
+
+    // define o valor do dropdown conforme a URL inicial
+    _dropdownValue =
+        _predefinedUrls.contains(_selectedBaseUrl) ? _selectedBaseUrl : 'Outro';
+
+    // cria o ApiService com a base inicial
+    _api = ApiService(baseUrl: _selectedBaseUrl);
   }
 
   @override
   void dispose() {
     nameController.dispose();
     emailController.dispose();
-    _api.dispose();
+    _baseUrlController.dispose();
+
+    // tenta dispensar o serviço de API e o player de áudio
+    try {
+      _api.dispose();
+    } catch (_) {}
+    try {
+      _audioPlayer.dispose();
+    } catch (_) {}
+
     super.dispose();
   }
 
@@ -47,14 +92,33 @@ class _MainMenuState extends State<MainMenu> {
     final reg = RegExp(r'^(\d+)');
     final m = reg.firstMatch(gradeStr);
     final v = int.tryParse(m?.group(1) ?? '1') ?? 1;
-    return v.clamp(1, 5);
+    return v.clamp(1, 9);
   }
 
-  // Baixa o áudio remoto e toca com FlameAudio
+  /// Atualiza a base URL: recria o ApiService e ajusta estados
+  void _updateApiBaseUrl(String url) {
+    final sanitized = url.trim();
+    if (sanitized.isEmpty) return;
+
+    setState(() {
+      _selectedBaseUrl = sanitized;
+      _baseUrlController.text = sanitized;
+      _dropdownValue =
+          _predefinedUrls.contains(sanitized) ? sanitized : 'Outro';
+
+      // recria o ApiService com a nova base (dispose do antigo)
+      try {
+        _api.dispose();
+      } catch (_) {}
+      _api = ApiService(baseUrl: sanitized);
+    });
+  }
+
+  // Baixa o áudio remoto e toca com AudioPlayer (bytes)
   Future<void> _playRemoteAudio(String childName) async {
     try {
       final uri = Uri.parse(
-          '${_api.baseUrl}/audio/welcomes/${Uri.encodeComponent(childName)}.mp3');
+          '$_selectedBaseUrl/audio/welcomes/${Uri.encodeComponent(childName)}.mp3');
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
@@ -105,27 +169,35 @@ class _MainMenuState extends State<MainMenu> {
       debugPrint('Erro ao registrar usuário: $e');
     }
 
-    // Toca o áudio de boas-vindas do servidor
+    // Toca o áudio de boas-vindas do servidor (usa _selectedBaseUrl)
     await _playRemoteAudio(nome);
 
     // Entrar no jogo independentemente do registro
     widget.game.overlays.remove('MainMenu');
     widget.game.resumeEngine();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(registered
-            ? 'Registro realizado com sucesso!'
-            : 'Usuário não cadastrado'),
-        backgroundColor: registered ? Colors.green : Colors.orange,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(registered
+              ? 'Registro realizado com sucesso!'
+              : 'Usuário não cadastrado'),
+          backgroundColor: registered ? Colors.green : Colors.orange,
+        ),
+      );
 
-    if (mounted) setState(() => _loading = false);
+      setState(() => _loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // lista de itens do dropdown (mostra as pré-definidas + opção 'Outro')
+    final dropdownItems = [
+      ..._predefinedUrls,
+      'Outro',
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFFE1F5FE),
       body: Center(
@@ -157,7 +229,63 @@ class _MainMenuState extends State<MainMenu> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 25),
+              const SizedBox(height: 20),
+
+              // Dropdown para escolher servidor API
+              DropdownButtonFormField<String>(
+                value: _dropdownValue,
+                decoration: InputDecoration(
+                  labelText: '🌐 Servidor API',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+                items: dropdownItems
+                    .map((value) =>
+                        DropdownMenuItem(value: value, child: Text(value)))
+                    .toList(),
+                onChanged: (newValue) {
+                  if (newValue == null) return;
+                  if (newValue == 'Outro') {
+                    // define o dropdown como 'Outro' e mantém a URL manual atual no controller
+                    setState(() => _dropdownValue = 'Outro');
+                    // se o campo manual estiver vazio, coloca a primeira pré-definida como ponto de partida
+                    if (_baseUrlController.text.trim().isEmpty) {
+                      _baseUrlController.text = _predefinedUrls[0];
+                      _updateApiBaseUrl(_baseUrlController.text.trim());
+                    } else {
+                      _updateApiBaseUrl(_baseUrlController.text.trim());
+                    }
+                  } else {
+                    // selecionou uma URL pré-definida
+                    _updateApiBaseUrl(newValue);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Campo para editar/colocar a base URL manualmente
+              TextField(
+                controller: _baseUrlController,
+                onChanged: (val) {
+                  // atualiza API conforme o usuário digita (com debounce simples opcional)
+                  _updateApiBaseUrl(val);
+                },
+                decoration: InputDecoration(
+                  labelText: '🔧 Base URL manual',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 18),
+
+              const SizedBox(height: 7),
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
