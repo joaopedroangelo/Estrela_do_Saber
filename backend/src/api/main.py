@@ -171,6 +171,49 @@ async def new_question(
         logger.error(f"❌ Erro ao gerar questão: {e}")
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
+@app.post("/responder")
+async def answer_question(
+    request: AnswerRequest,
+    session: Session = Depends(get_session)
+) -> Dict[str, Any]:
+    """
+    Processa resposta da criança usando sistema multi-agente
+    """
+    
+    logger.info(f"Resposta recebida: questão {request.id}, resposta {request.resposta}")
+    
+    try:
+        # Verificar se criança existe
+        child = session.exec(
+            select(Child).where(Child.email_responsavel == request.email_responsavel)
+        ).first()
+        
+        if not child:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Criança não encontrada. Faça o registro primeiro."
+            )
+        
+        # Processar resposta via orchestrator
+        result = orchestrator.process_answer(
+            question_id=request.id,
+            user_answer=request.resposta,
+            child_email=request.email_responsavel
+        )
+        
+        logger.info(f"Resposta processada: {'Correta' if result['correta'] else 'Incorreta'}")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao processar resposta: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno: {str(e)}"
+        )
+
 from fastapi.responses import FileResponse
 import os
 
