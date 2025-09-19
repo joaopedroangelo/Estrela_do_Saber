@@ -94,51 +94,36 @@ async def register_child(
     """
     
     logger.info(f"Registrando criança: {request.nome}, {request.ano}º ano")
-    
-    try:
-        # Verificar se criança já existe
-        existing_child = session.exec(
-            select(Child).where(Child.email_responsavel == request.email_responsavel)
-        ).first()
-        
-        if existing_child:
-            # Atualizar dados existentes
-            existing_child.nome = request.nome
-            existing_child.ano = request.ano
-            session.commit()
-            session.refresh(existing_child)
-            child_data = existing_child
-            logger.info(f"Criança atualizada: {request.nome}")
-        else:
+            # Verificar se criança já exist
             # Criar nova criança
-            new_child = Child(
-                nome=request.nome,
-                ano=request.ano,
-                email_responsavel=request.email_responsavel
-            )
-            session.add(new_child)
-            session.commit()
-            session.refresh(new_child)
-            child_data = new_child
-            logger.info(f"Nova criança registrada: {request.nome}")
+    new_child = Child(
+        nome=request.nome,
+        ano=request.ano,
+            email_responsavel=request.email_responsavel
+    )
+    session.add(new_child)
+    session.commit()
+    session.refresh(new_child)
+    child_data = new_child
+    logger.info(f"Nova criança registrada: {request.nome}")
 
-            # Gerar áudio de boas-vindas apenas para novos registros
-            welcome_text = f"Olá {request.nome}! Seja muito bem-vinda ao jogo do saber, o melhoooor jogo do mundo! Vamos brincar com as letras?"
-            audio_filename = f"{request.nome.lower().replace(' ', '_')}.mp3"
-            audio_dir = os.path.join("audios", "welcomes")
-            os.makedirs(audio_dir, exist_ok=True)
-            audio_path = os.path.join(audio_dir, audio_filename)
+    # Gerar áudio de boas-vindas apenas para novos registros
+    welcome_text = f"Olá {request.nome}! Seja muito bem-vinda ao jogo do saber, o melhoooor jogo do mundo! Vamos brincar com as letras?"
+    audio_filename = f"{request.nome.lower().replace(' ', '_')}.mp3"
+    audio_dir = os.path.join("audios", "welcomes")
+    os.makedirs(audio_dir, exist_ok=True)
+    audio_path = os.path.join(audio_dir, audio_filename)
             
-            # Usar o TTS Agent para gerar áudio
-            tts_agent = ChildFeedbackAgent()
-            tts_agent.generate_audio(welcome_text, audio_path)
+    # Usar o TTS Agent para gerar áudio
+    tts_agent = ChildFeedbackAgent()
+    tts_agent.generate_audio(welcome_text, audio_path)
             
-            # Atualizar caminho do áudio no banco
-            child_data.audio_path = audio_path
-            session.commit()
-            session.refresh(child_data)
+    # Atualizar caminho do áudio no banco
+    child_data.audio_path = audio_path
+    session.commit()
+    session.refresh(child_data)
         
-        return {
+    return {
             "ok": True,
             "child": {
                 "id": child_data.id,
@@ -149,13 +134,7 @@ async def register_child(
                 "created_at": child_data.created_at.isoformat()
             }
         }
-        
-    except Exception as e:
-        logger.error(f"Erro ao registrar criança: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno: {str(e)}"
-        )
+
 
 from fastapi.responses import FileResponse
 import os

@@ -25,3 +25,4 @@ flutter:
     - assets/audio/dora_voices/presentations/
     - assets/audio/dora_voices/feedbacks_correct/
     - assets/audio/dora_voices/feedbacks_error/
+    - assets/audio/welcomes/

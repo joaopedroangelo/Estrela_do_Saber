@@ -1,10 +1,10 @@
 // lib/overlays/main_menu.dart
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+
 import '../ember_quest.dart';
 import '../api/api.dart';
 
@@ -20,7 +20,7 @@ class MainMenu extends StatefulWidget {
 class _MainMenuState extends State<MainMenu> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final AudioPlayer audioPlayer = AudioPlayer();
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   String selectedGrade = '1º Ano';
   bool _loading = false;
@@ -41,7 +41,6 @@ class _MainMenuState extends State<MainMenu> {
   void dispose() {
     nameController.dispose();
     emailController.dispose();
-    audioPlayer.dispose();
     _api.dispose();
     super.dispose();
   }
@@ -53,29 +52,20 @@ class _MainMenuState extends State<MainMenu> {
     return v.clamp(1, 5);
   }
 
-  /// Baixa o áudio do servidor apenas se não existir no cache temporário
-  Future<File> _getAudioFile(String url, String fileName) async {
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$fileName');
-    if (!await file.exists()) {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode != 200) throw Exception('Falha ao baixar áudio');
-      await file.writeAsBytes(response.bodyBytes);
-    }
-    return file;
-  }
-
-  /// Toca o áudio em paralelo (não bloqueia a UI)
-  Future<void> _playWelcomeAudio(String url, String fileName) async {
+  // Baixa o áudio remoto e toca com FlameAudio
+  Future<void> _playRemoteAudio(String childName) async {
     try {
-      final file = await _getAudioFile(url, fileName);
-      await audioPlayer.stop();
-      await audioPlayer.play(DeviceFileSource(file.path));
-      audioPlayer.onPlayerStateChanged.listen((state) {
-        print('🎵 Estado do player: $state');
-      });
+      final uri = Uri.parse(
+          '${_api.baseUrl}/audio/welcomes/${Uri.encodeComponent(childName)}.mp3');
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        await _audioPlayer.play(BytesSource(response.bodyBytes));
+      } else {
+        debugPrint('Não foi possível obter áudio: ${response.statusCode}');
+      }
     } catch (e) {
-      print("❌ Erro ao tocar áudio: $e");
+      debugPrint('Erro ao tocar áudio de boas-vindas: $e');
     }
   }
 
@@ -96,6 +86,8 @@ class _MainMenuState extends State<MainMenu> {
 
     setState(() => _loading = true);
 
+    bool registered = false;
+
     try {
       final res = await _api.registerChild(
         nome: nome,
@@ -104,55 +96,34 @@ class _MainMenuState extends State<MainMenu> {
       );
 
       if (res['ok'] == true) {
+        registered = true;
         widget.game.savePlayerData(
           name: nome,
           grade: selectedGrade,
           parentEmail: email,
         );
-
-        // Toca o áudio em paralelo, sem esperar terminar
-        unawaited(_playWelcomeAudio(
-          'http://192.168.1.8:5000/audio/welcomes/maria_silva.mp3',
-          'welcome.mp3',
-        ));
-
-        // Entrar no jogo imediatamente
-        widget.game.overlays.remove('MainMenu');
-        widget.game.resumeEngine();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registro realizado com sucesso!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        final message =
-            res['detail'] ?? res['error'] ?? 'Resposta inesperada do servidor';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro no registro: $message'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
-    } on ApiException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro na API: ${e.message}'),
-          backgroundColor: Colors.red,
-        ),
-      );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro inesperado: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      debugPrint('Erro ao registrar usuário: $e');
     }
+
+    // Toca o áudio de boas-vindas do servidor
+    await _playRemoteAudio(nome);
+
+    // Entrar no jogo independentemente do registro
+    widget.game.overlays.remove('MainMenu');
+    widget.game.resumeEngine();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(registered
+            ? 'Registro realizado com sucesso!'
+            : 'Usuário não cadastrado'),
+        backgroundColor: registered ? Colors.green : Colors.orange,
+      ),
+    );
+
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -222,7 +193,7 @@ class _MainMenuState extends State<MainMenu> {
                   '8º Ano',
                   '9º Ano',
                 ]
-                    .map<DropdownMenuItem<String>>((value) =>
+                    .map((value) =>
                         DropdownMenuItem(value: value, child: Text(value)))
                     .toList(),
                 onChanged: (newValue) {
