@@ -208,12 +208,3 @@ class ResponsesResponse {
     );
   }
 }
-
-// USAGE RÁPIDO (não duplicado no código):
-// - Crie ApiService(baseUrl: 'http://10.0.2.2:5000') para emulador Android
-// - Para iOS simulator use 'http://127.0.0.1:5000' ou para device real use IP da máquina
-// - Exemplo de chamadas: registerChild(...), newQuestion(...), answerQuestion(...), getResponses(...)
-
-// PUBSPEC (adicione):
-// dependencies:
-//   http: ^0.13.6

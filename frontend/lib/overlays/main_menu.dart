@@ -1,8 +1,6 @@
 // lib/overlays/main_menu.dart
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flame_audio/flame_audio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 
 import '../ember_quest.dart';
