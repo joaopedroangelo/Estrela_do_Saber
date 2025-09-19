@@ -11,13 +11,12 @@ class Child(SQLModel, table=True):
     ano: int  # Ano do ensino fundamental
     email_responsavel: str = Field(index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    audio_path: Optional[str] = Field(default=None, nullable=True)
+
 
 class Question(SQLModel, table=True):
     """Modelo para armazenar questões (opcional - pode ser gerada on-the-fly)"""
-    id: int = Field(
-            default_factory=lambda: random.randint(100, 999999),
-            primary_key=True
-        )    
+    id: Optional[int] = Field(default=None, primary_key=True)  # <-- autoincrement do DB
     question: str
     options: Dict[str, Any] = Field(sa_column=Column(JSON))  # Lista de opções em JSON
     answer: str  # Gabarito correto

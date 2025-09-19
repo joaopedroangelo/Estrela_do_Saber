@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Any, TypedDict
 from sqlmodel import Session, select
 from db.models import get_session, Response, Question, Child, create_db_and_tables
@@ -185,8 +186,16 @@ class MultiAgentOrchestrator:
                 state["question_data"]["id"] = question_id
                 state["question_id"] = question_id
                 state["question_data"]["audio_path"] = audio_path
+                formatted_question = {
+                    "id": question_data["id"],
+                    "disponivel": True,
+                    "question": question_data["question"],
+                    "options": question_data["options"],
+                    "answer": question_data["answer"]
+                }
+                # 🔎 Log detalhado da questão salva
+                logger.info("📌 Questão persistida: %s", formatted_question)
 
-            logger.info("✅ Questão gerada completa (com áudio): Áudio path = %s", audio_path)
             return state
 
         except Exception as e:

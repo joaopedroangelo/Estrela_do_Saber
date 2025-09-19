@@ -87,7 +87,6 @@ class QuestionGeneratorAgent:
             
             # Adicionar campos obrigatórios
             formatted_question = {
-                "id": self._question_counter,
                 "disponivel": True,
                 "question": question_data["question"],
                 "options": question_data["options"],
@@ -96,8 +95,7 @@ class QuestionGeneratorAgent:
             
             self._question_counter += 1
             
-            print("✅ Questão gerada completa:")
-            print(json.dumps(formatted_question, indent=2, ensure_ascii=False))
+            print("✅ Questão gerada")
             print("Gerando áudio...")
             
             return formatted_question

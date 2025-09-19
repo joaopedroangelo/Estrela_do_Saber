@@ -1,13 +1,17 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, EmailStr
-from typing import Dict, Any, List
-from sqlmodel import Session, select
+from typing import Dict, Any, List, Optional
+from sqlmodel import Column, Session, String, select
 import sys
 import os
+from fastapi.staticfiles import StaticFiles
 
+# Adicione esta linha após criar a instância do app
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from agents.tts_agent import ChildFeedbackAgent
 from db.models import Child, Response, Question, get_session, create_db_and_tables
 from agents.orchestrator import MultiAgentOrchestrator
 import logging
@@ -21,6 +25,19 @@ app = FastAPI(
     description="API para geração de questões educativas, avaliação de respostas e relatórios de desempenho",
     version="1.0.0"
 )
+app.mount("/audios", StaticFiles(directory="audios"), name="audios")
+
+
+from fastapi.middleware.cors import CORSMiddleware
+
+# Adicione isso após criar a instância do app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permite todas as origens (apenas para desenvolvimento)
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite todos os métodos
+    allow_headers=["*"],  # Permite todos os headers
+)
 
 # Instanciar orquestrador
 orchestrator = MultiAgentOrchestrator()
@@ -30,6 +47,11 @@ class RegisterRequest(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100, example="Maria Silva")
     ano: int = Field(..., ge=1, le=5, example=3)
     email_responsavel: EmailStr = Field(..., example="responsavel@exemplo.com")
+
+# Adicione esta classe para a resposta
+class RegisterResponse(BaseModel):
+    ok: bool
+    child: dict
 
 class NewQuestionRequest(BaseModel):
     ano: int = Field(..., ge=1, le=5, example=3)
@@ -99,6 +121,22 @@ async def register_child(
             session.refresh(new_child)
             child_data = new_child
             logger.info(f"Nova criança registrada: {request.nome}")
+
+            # Gerar áudio de boas-vindas apenas para novos registros
+            welcome_text = f"Olá {request.nome}! Seja muito bem-vinda ao jogo do saber, o melhoooor jogo do mundo! Vamos brincar com as letras?"
+            audio_filename = f"{request.nome.lower().replace(' ', '_')}.mp3"
+            audio_dir = os.path.join("audios", "welcomes")
+            os.makedirs(audio_dir, exist_ok=True)
+            audio_path = os.path.join(audio_dir, audio_filename)
+            
+            # Usar o TTS Agent para gerar áudio
+            tts_agent = ChildFeedbackAgent()
+            tts_agent.generate_audio(welcome_text, audio_path)
+            
+            # Atualizar caminho do áudio no banco
+            child_data.audio_path = audio_path
+            session.commit()
+            session.refresh(child_data)
         
         return {
             "ok": True,
@@ -107,6 +145,7 @@ async def register_child(
                 "nome": child_data.nome,
                 "ano": child_data.ano,
                 "email_responsavel": child_data.email_responsavel,
+                "audio_path": child_data.audio_path,
                 "created_at": child_data.created_at.isoformat()
             }
         }
@@ -118,121 +157,40 @@ async def register_child(
             detail=f"Erro interno: {str(e)}"
         )
 
-@app.post("/nova_questao", status_code=status.HTTP_201_CREATED)
-async def new_question(
-    request: NewQuestionRequest,
-    session: Session = Depends(get_session)
-) -> Dict[str, Any]:
-    """
-    Gera nova questão usando o sistema multi-agente
-    """
-    
-    logger.info(f"Nova questão solicitada: {request.ano}º ano, email: {request.email_responsavel}")
-    
-    try:
-        # Verificar se criança existe
-        child = session.exec(
-            select(Child).where(Child.email_responsavel == request.email_responsavel)
-        ).first()
-        
-        if not child:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail="Criança não encontrada. Faça o registro primeiro."
-            )
-        
-        # Processar via orchestrator
-        question_data = orchestrator.process_new_question(
-            ano=request.ano,
-            child_email=request.email_responsavel
-        )
-        
-        logger.info(f"Questão gerada: ID {question_data['id']}")
-        
-        return question_data
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao gerar questão: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno: {str(e)}"
-        )
+from fastapi.responses import FileResponse
+import os
 
-@app.post("/responder")
-async def answer_question(
-    request: AnswerRequest,
-    session: Session = Depends(get_session)
-) -> Dict[str, Any]:
-    """
-    Processa resposta da criança usando sistema multi-agente
-    """
-    
-    logger.info(f"Resposta recebida: questão {request.id}, resposta {request.resposta}")
-    
-    try:
-        # Verificar se criança existe
-        child = session.exec(
-            select(Child).where(Child.email_responsavel == request.email_responsavel)
-        ).first()
-        
-        if not child:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail="Criança não encontrada. Faça o registro primeiro."
-            )
-        
-        # Processar resposta via orchestrator
-        result = orchestrator.process_answer(
-            question_id=request.id,
-            user_answer=request.resposta,
-            child_email=request.email_responsavel
-        )
-        
-        logger.info(f"Resposta processada: {'Correta' if result['correta'] else 'Incorreta'}")
-        
-        return result
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao processar resposta: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno: {str(e)}"
-        )
+@app.api_route("/audio/{file_path:path}", methods=["GET", "HEAD"])
+async def get_audio(file_path: str):
+    audio_path = os.path.join("audios", file_path)
 
-@app.get("/relatorio/{email}")
-async def get_report(email: str) -> Dict[str, Any]:
-    """
-    Gera relatório técnico de desempenho
-    """
-    
-    logger.info(f"Relatório solicitado para: {email}")
-    
-    try:
-        # Gerar relatório via agente especializado
-        report = orchestrator.generate_report(email)
-        
-        if "error" in report:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=report["error"]
-            )
-        
-        logger.info(f"Relatório gerado para {report.get('child_info', {}).get('name', 'criança')}")
-        
-        return report
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao gerar relatório: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno: {str(e)}"
-        )
+    if not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
+    if not audio_path.endswith(".mp3"):
+        raise HTTPException(status_code=400, detail="Apenas MP3 são suportados")
+
+    file_size = os.path.getsize(audio_path)
+
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(file_size),
+        "Content-Type": "audio/mpeg",
+    }
+
+    # Se for só HEAD → devolve só os headers
+    if file_path and "HEAD" in str(file_path):
+        return Response(status_code=200, headers=headers)
+
+    # Se for GET → devolve o arquivo
+    return FileResponse(
+        audio_path,
+        media_type="audio/mpeg",
+        filename=os.path.basename(audio_path),
+        content_disposition_type="inline",  # 👈 força inline
+        headers={"Accept-Ranges": "bytes"}  # 👈 garante suporte a Range
+    )
+
 
 @app.get("/respostas/{email}", response_model=ResponsesResponse)
 async def get_responses(

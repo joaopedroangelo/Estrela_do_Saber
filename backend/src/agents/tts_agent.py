@@ -71,8 +71,11 @@ class ChildFeedbackAgent:
             voice=self.voice,
             input=text,
            instructions=(
-            "Leia o texto de forma animada, empolgante, feliz e divertida! "
-            "Você está conversando com uma criança."
+            "Leia o texto de forma animada, empolgante, feliz e divertida!"
+            "Você está conversando com uma criança." \
+            "Seja lúdica na leitura, se tiver um animal no texto, imite-o." \
+            "Divirta a criança. Seja lúdica, criativa." \
+            "Se tiver o nome da criança, leia de forma devagar."
         ),
 
         )
