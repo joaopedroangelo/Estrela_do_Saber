@@ -108,7 +108,21 @@ if __name__ == "__main__":
     # Instancia o agente
     agent = ChildFeedbackAgent()
 
-    # Teste rápido do generate audio
-    texto_teste = "Oi! Qual é o seu nome? Eu sou a Dora. Vamos brincar com as letras?"
-    agent._generate_audio(texto_teste, audio_output_path)
-    print(f"Áudio de teste salvo em: {audio_output_path}")
+    mensagens_boas_vindas = [
+    "O Estrela do Saber está no ar! Uma jornada incrível começa agora!",
+    "Chegou o momento! Prepare-se para explorar o Estrela do Saber!",
+    "O Estrela do Saber espera por você com desafios e diversão sem fim!",
+    "Hora de brilhar! O Estrela do Saber está pronto para começar!",
+    "Diversão e aprendizado se encontram aqui no Estrela do Saber!",
+    "Explore, descubra e se divirta no universo do Estrela do Saber!",
+    "Desafios, aventuras e conhecimento: tudo isso no Estrela do Saber!",
+    "Uma experiência única começa agora no Estrela do Saber!",
+    "O Estrela do Saber é pura energia, conhecimento e diversão!",
+    "Prepare-se! O Estrela do Saber vai surpreender do começo ao fim!"
+]
+
+    # Loop para gerar áudios
+    for i, texto_teste in enumerate(mensagens_boas_vindas, start=1):
+        audio_output_path = f"audio_boas_vindas_{i}.mp3"
+        agent._generate_audio(texto_teste, audio_output_path)
+        print(f"Áudio {i} salvo em: {audio_output_path}")

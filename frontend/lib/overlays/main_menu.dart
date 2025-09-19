@@ -3,8 +3,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 import '../ember_quest.dart';
 import '../api/api.dart';
 
@@ -29,16 +29,12 @@ class _MainMenuState extends State<MainMenu> {
   @override
   void initState() {
     super.initState();
-
-    if (widget.game.playerName.isNotEmpty) {
+    if (widget.game.playerName.isNotEmpty)
       nameController.text = widget.game.playerName;
-    }
-    if (widget.game.parentEmail.isNotEmpty) {
+    if (widget.game.parentEmail.isNotEmpty)
       emailController.text = widget.game.parentEmail;
-    }
-    if (widget.game.playerGrade.isNotEmpty) {
+    if (widget.game.playerGrade.isNotEmpty)
       selectedGrade = widget.game.playerGrade;
-    }
   }
 
   @override
@@ -53,128 +49,34 @@ class _MainMenuState extends State<MainMenu> {
   int _gradeStringToInt(String gradeStr) {
     final reg = RegExp(r'^(\d+)');
     final m = reg.firstMatch(gradeStr);
-    if (m == null) return 1;
-    final v = int.tryParse(m.group(1)!) ?? 1;
-    if (v < 1) return 1;
-    if (v > 5) return 5;
-    return v;
+    final v = int.tryParse(m?.group(1) ?? '1') ?? 1;
+    return v.clamp(1, 5);
   }
 
-  // ignore: unused_element
-  Future<void> _playWelcomeAudio(String audioPath) async {
-    final base = 'http://192.168.1.8:5000';
-    String relativePath =
-        audioPath.startsWith('audios/') ? audioPath.substring(7) : audioPath;
-    final candidateUrls = [
-      '$base/audio/$relativePath', // rota personalizada
-      '$base/$audioPath', // rota estática
-    ];
-
-    Future<void> _playFromUrl(String url) async {
-      try {
-        // checar rapidamente se o recurso existe (HEAD preferível; se não suportar, fallback para GET)
-        try {
-          final headResp = await http
-              .head(Uri.parse(url))
-              .timeout(const Duration(seconds: 4));
-          if (headResp.statusCode != 200) {
-            throw Exception('HEAD retornou ${headResp.statusCode}');
-          }
-        } catch (e) {
-          // tenta um GET curto (alguns servidores não respondem a HEAD)
-          final getResp = await http
-              .get(Uri.parse(url))
-              .timeout(const Duration(seconds: 6));
-          if (getResp.statusCode != 200)
-            throw Exception('GET curto retornou ${getResp.statusCode}');
-        }
-
-        // Escuta o estado do player para saber quando realmente começou a tocar
-        final completer = Completer<void>();
-        late StreamSubscription sub;
-        sub = audioPlayer.onPlayerStateChanged.listen((state) {
-          if (state == PlayerState.playing) {
-            if (!completer.isCompleted) completer.complete();
-          } else if (state == PlayerState.stopped ||
-              state == PlayerState.completed) {
-            if (!completer.isCompleted)
-              completer.completeError(Exception('player parou antes de tocar'));
-          }
-        });
-
-        // Inicia o play (não aplicamos timeout diretamente aqui)
-        await audioPlayer.play(UrlSource(url));
-
-        // aguardamos até entrar em playing, com timeout razoável
-        await completer.future.timeout(const Duration(seconds: 10),
-            onTimeout: () {
-          throw TimeoutException(
-              'Timeout aguardando PlayerState.playing para $url');
-        });
-
-        await sub.cancel();
-        print('Áudio reproduzido via URL: $url');
-      } catch (e) {
-        rethrow; // deixa o chamador tratar / tentar fallback
-      }
+  /// Baixa o áudio do servidor apenas se não existir no cache temporário
+  Future<File> _getAudioFile(String url, String fileName) async {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/$fileName');
+    if (!await file.exists()) {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) throw Exception('Falha ao baixar áudio');
+      await file.writeAsBytes(response.bodyBytes);
     }
+    return file;
+  }
 
-    // Tenta as urls na ordem, depois tenta tocar a partir dos bytes (sem salvar) e por fim salva+toca no disco.
-    for (final url in candidateUrls) {
-      try {
-        print('Tentando reproduzir áudio via URL: $url');
-        await _playFromUrl(url);
-        return;
-      } catch (e) {
-        print('Falha ao reproduzir via URL $url: $e');
-        // tenta próxima URL
-      }
-    }
-
-    // Fallback: tenta baixar os bytes e tocar diretamente (sem salvar em disco)
+  /// Toca o áudio em paralelo (não bloqueia a UI)
+  Future<void> _playWelcomeAudio(String url, String fileName) async {
     try {
-      final downloadUrl = '$base/$audioPath';
-      print('Tentando fallback: download bytes de $downloadUrl');
-      final resp = await http
-          .get(Uri.parse(downloadUrl))
-          .timeout(const Duration(seconds: 15));
-      if (resp.statusCode == 200 && resp.bodyBytes.isNotEmpty) {
-        // tocar direto dos bytes (BytesSource)
-        try {
-          await audioPlayer.play(BytesSource(resp.bodyBytes));
-          print('Áudio reproduzido diretamente dos bytes (sem salvar).');
-          return;
-        } catch (e) {
-          print('Falha ao reproduzir BytesSource: $e');
-        }
-
-        // Se preferir salvar e tocar do arquivo (opcional)
-        try {
-          final directory = await getTemporaryDirectory();
-          final assetsDir = Directory('${directory.path}/downloads_audio');
-          await assetsDir.create(recursive: true);
-          final fileName = audioPath.split('/').last;
-          final file = File('${assetsDir.path}/$fileName');
-          await file.writeAsBytes(resp.bodyBytes);
-          if (await file.exists() && await file.length() > 0) {
-            print('Arquivo salvo temporariamente em: ${file.path}');
-            await audioPlayer.play(DeviceFileSource(file.path));
-            print('Áudio reproduzido localmente: ${file.path}');
-            return;
-          } else {
-            print('Falha ao salvar arquivo localmente (arquivo vazio).');
-          }
-        } catch (e) {
-          print('Erro ao salvar e reproduzir localmente: $e');
-        }
-      } else {
-        print('Resposta de download inválida: ${resp.statusCode}');
-      }
+      final file = await _getAudioFile(url, fileName);
+      await audioPlayer.stop();
+      await audioPlayer.play(DeviceFileSource(file.path));
+      audioPlayer.onPlayerStateChanged.listen((state) {
+        print('🎵 Estado do player: $state');
+      });
     } catch (e) {
-      print('Erro no fallback de download: $e');
+      print("❌ Erro ao tocar áudio: $e");
     }
-
-    print('Não foi possível reproduzir o áudio em nenhum método.');
   }
 
   Future<void> _onStartPressed(BuildContext context) async {
@@ -208,7 +110,13 @@ class _MainMenuState extends State<MainMenu> {
           parentEmail: email,
         );
 
-        // 👉 Entrar direto no jogo (sem áudio)
+        // Toca o áudio em paralelo, sem esperar terminar
+        unawaited(_playWelcomeAudio(
+          'http://192.168.1.8:5000/audio/welcomes/maria_silva.mp3',
+          'welcome.mp3',
+        ));
+
+        // Entrar no jogo imediatamente
         widget.game.overlays.remove('MainMenu');
         widget.game.resumeEngine();
 
@@ -313,18 +221,13 @@ class _MainMenuState extends State<MainMenu> {
                   '7º Ano',
                   '8º Ano',
                   '9º Ano',
-                ].map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      selectedGrade = newValue;
-                    });
-                  }
+                ]
+                    .map<DropdownMenuItem<String>>((value) =>
+                        DropdownMenuItem(value: value, child: Text(value)))
+                    .toList(),
+                onChanged: (newValue) {
+                  if (newValue != null)
+                    setState(() => selectedGrade = newValue);
                 },
               ),
               const SizedBox(height: 20),
@@ -355,18 +258,15 @@ class _MainMenuState extends State<MainMenu> {
                                 AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text(
-                          '🎮 Começar Jogo',
-                          style: TextStyle(fontSize: 18),
-                        ),
+                      : const Text('🎮 Começar Jogo',
+                          style: TextStyle(fontSize: 18)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 35, vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
+                        borderRadius: BorderRadius.circular(20)),
                     elevation: 5,
                     shadowColor: Colors.greenAccent,
                   ),
